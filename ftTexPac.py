@@ -1,23 +1,24 @@
 #!/usr/bin/python
 
-import sys, os, commands
+import sys, os
 import PIL.Image as Image
 
 def goThrough(rootDir): 
     ans = []
-    root, dirs, files = os.walk(rootDir).next() 
+    walkList = os.walk(rootDir)
+    root, dirs, files = walkList.next() 
     for f in files:
         ans.append((os.path.join(root, f), f))
     return ans
 
 if len(sys.argv) != 2:
-    print 'usage: ftTexPac.py [PATH]'
+    print('usage: ftTexPac.py [PATH]')
     exit(0)
 
 path = sys.argv[1]
 
 if not os.path.isdir(path):
-    print 'error: ' + path + ' is not a path!'
+    print('error: ' + path + ' is not a path!')
     exit(0)
 
 piclist = goThrough(path)
@@ -43,10 +44,10 @@ def picCmp(picA, picB):
 picList.sort(picCmp)
 picN = len(picList)
 for name, im in picList:
-    print "%-50s %5s %5dx%-5d" % (name, im.format, im.size[0], im.size[1]), im.mode
+    print("%-50s %5s %5dx%-5d" % (name, im.format, im.size[0], im.size[1]) + im.mode)
 
 if picN == 0:
-    print 'there is no pic in ' + path + '!'
+    print('there is no pic in ' + path + '!')
     exit(0)
 
 global pxH
@@ -172,7 +173,7 @@ for i in range(5, 12):
         break
 
 if find:
-    print 'find it!'
+    print('find it!')
     bgcolor = (255, 255, 255, 0)
     outImage = Image.new('RGBA', (width, height), bgcolor)
     for i in range(picN):
@@ -197,4 +198,4 @@ if find:
     outFile.writelines(outInfo)
     outFile.close()
 else:
-    print 'sorry, not find a solution.'
+    print('sorry, not find a solution.')

@@ -1,15 +1,29 @@
 #!/usr/bin/python
 
-import sys, os
+import sys, os, math
 import PIL.Image as Image
 
-def goThrough(rootDir): 
+## you can add more to this typeFilter, as long as the PIL support it
+## this typeFilter is to help dealing with files faster
+typeFilter = ['png', 'jpg', 'jpeg', 'gif', 'bmp']
+
+def goThrough(rootDir):
     ans = []
     walkList = os.walk(rootDir)
     root, dirs, files = walkList.next() 
     for f in files:
-        ans.append((os.path.join(root, f), f))
+        suffix = f.split('.')[-1]
+        if suffix.lower() in typeFilter:
+            ans.append((os.path.join(root, f), f))
     return ans
+
+def picCmp(picA, picB):
+    nameA, imA = picA
+    nameB, imB = picB
+    for i in range(2):
+        if imA.size[i] != imB.size[i]:
+            return cmp(imB.size[i], imA.size[i])
+    return cmp(nameA, nameB)
 
 if len(sys.argv) != 2:
     print('usage: ftTexPac.py [PATH]')
@@ -21,10 +35,10 @@ if not os.path.isdir(path):
     print('error: ' + path + ' is not a path!')
     exit(0)
 
-piclist = goThrough(path)
+picPathList = goThrough(path)
 picList = []
 
-for picPath, name in piclist:
+for picPath, name in picPathList:
     isPic = True
     try:
         im = Image.open(picPath)
@@ -33,22 +47,15 @@ for picPath, name in piclist:
     if isPic:
         picList.append((name, im))
 
-def picCmp(picA, picB):
-    nameA, imA = picA
-    nameB, imB = picB
-    for i in range(2):
-        if imA.size[i] != imB.size[i]:
-            return cmp(imB.size[i], imA.size[i])
-    return cmp(nameA, nameB)
-
 picList.sort(picCmp)
 picN = len(picList)
-for name, im in picList:
-    print("%-50s %5s %5dx%-5d" % (name, im.format, im.size[0], im.size[1]) + im.mode)
 
 if picN == 0:
     print('there is no pic in ' + path + '!')
     exit(0)
+
+for name, im in picList:
+    print('%-50s %5s %5dx%-5d' % (name, im.format, im.size[0], im.size[1]) + im.mode)
 
 global pxH
 global use
@@ -148,8 +155,17 @@ def work():
     else:
         return False
 
+maxLen = 0
+for pic in picList:
+    if pic[1].size[0] > maxLen:
+        maxLen = pic[1].size[0]
+    if pic[1].size[1] > maxLen:
+        maxLen = pic[1].size[1]
+
+minPower = int(math.log(maxLen) / math.log(2))
+
 find = False
-for i in range(5, 12):
+for i in range(minPower, 12):
     t = 2**i
     width = t
     height = t
@@ -184,8 +200,8 @@ if find:
     if cmp(outName, '.') == 0:
         outName = 'pwd'
     outImage.save(outName + '.png')
-    #sip represent for Sub Image Pool
-    #it is a file format for Fountain game engine
+    ## sip represent for Sub Image Pool
+    ## it is a file format for Fountain game engine
     outFile = open(outName + '.sip', 'w')
     outFile.write('%d %d\n' % (width, height))
     outFile.write('%d\n' % picN)

@@ -3,14 +3,14 @@ ftTexPac
 
 A Python Texture Packer for Fountain game engine
 
-Requirements
+Dependencies
 ------------
 
 - Python 2.7.x
 - Python Imaging Library(PIL)
 
-Usage
------
+How to use
+----------
 
 Try "python ftTexPac.py PATH", PATH is the place where you put the images
 
@@ -33,7 +33,7 @@ Just use your text editor to view it, the format is simple
 Tips
 ----
 
-We may support other format in the future, like .plist for Cocos2d-x
+We may support other formats in future, like .plist for Cocos2d-x
 
 Licence
 -------

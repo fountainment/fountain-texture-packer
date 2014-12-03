@@ -155,6 +155,11 @@ for i in range(5, 12):
     if work():
         find = True
         break
+    width = t / 2
+    height = t * 2
+    if work():
+        find = True
+        break
     width = t * 2
     height = t
     if work():

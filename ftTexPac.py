@@ -11,13 +11,13 @@ def goThrough(rootDir):
     return ans
 
 if len(sys.argv) != 2:
-    print 'usage: texturePacker pathname'
+    print 'usage: ftTexPac.py [PATH]'
     exit(0)
 
 path = sys.argv[1]
 
 if not os.path.isdir(path):
-    print 'error: ' + path + 'is not a path!'
+    print 'error: ' + path + ' is not a path!'
     exit(0)
 
 piclist = goThrough(path)

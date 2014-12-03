@@ -117,7 +117,7 @@ def work():
     while True:
         if cur >= picN:
             break
-        if (use[cur] == 0) and (minL > picList[cur][1].size[0]):
+        if (use[cur] == 0) and (minL >= picList[cur][1].size[0]):
             tmp = place(cur, minX, minH)
             if not tmp:
                 return False

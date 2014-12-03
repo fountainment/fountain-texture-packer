@@ -11,7 +11,7 @@ def goThrough(rootDir):
     return ans
 
 if len(sys.argv) != 2:
-    print 'Usage: texturePacker pathname'
+    print 'usage: texturePacker pathname'
     exit(0)
 
 path = sys.argv[1]
@@ -45,6 +45,9 @@ picN = len(picList)
 for name, im in picList:
     print "%-50s %5s %5dx%-5d" % (name, im.format, im.size[0], im.size[1]), im.mode
 
+if picN == 0:
+    print 'there is no pic in ' + path + '!'
+    exit(0)
 
 global pxH
 global use

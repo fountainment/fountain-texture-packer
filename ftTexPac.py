@@ -174,8 +174,19 @@ if find:
         outName = os.path.split(path)[-2]
     if cmp(outName, '.') == 0:
         outName = 'pwd'
-    outName += '.png'
-    outImage.save(outName)
+    outImage.save(outName + '.png')
+    #sip represent for Sub Image Pool
+    #it is a file format for Fountain game engine
+    outFile = open(outName + '.sip', 'w')
+    outFile.write('%d %d\n' % (width, height))
+    outFile.write('%d\n' % picN)
+    outInfo = []
+    for i in range(picN):
+        name, im = picList[i]
+        size = im.size
+        pos = locList[i]
+        outInfo.append('%s %d %d %d %d\n' % (name, size[0], size[1], pos[0], pos[1]))
+    outFile.writelines(outInfo)
+    outFile.close()
 else:
     print 'sorry, not find a solution.'
-

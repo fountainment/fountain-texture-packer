@@ -3,9 +3,13 @@
 import sys, os, math
 import PIL.Image as Image
 
+MAX_PIC_NUM = 2000
+MAX_TARGET_SIZE = 4096
+INF = MAX_TARGET_SIZE * 2
+
+typeFilter = ['png', 'jpg', 'jpeg', 'gif', 'bmp', '']
 ## you can add more to this typeFilter, as long as the PIL support it
 ## this typeFilter is to help dealing with files faster
-typeFilter = ['png', 'jpg', 'jpeg', 'gif', 'bmp']
 
 def goThrough(rootDir):
     ans = []
@@ -57,18 +61,9 @@ if picN == 0:
 for name, im in picList:
     print('%-50s %5s %5dx%-5d' % (name, im.format, im.size[0], im.size[1]) + im.mode)
 
-global pxH
-global use
-global minH
-global minX
-global minL
-global width
-global height
-global locList
-
-use = [0] * 1000
-pxH = [0] * 4096
-locList = [(0, 0)] * 1000
+use = [0] * MAX_PIC_NUM
+pxH = [0] * MAX_TARGET_SIZE
+locList = [(0, 0)] * MAX_PIC_NUM
 
 def getMinHXL():
     global minH
@@ -88,6 +83,8 @@ def getMinHXL():
             break
 
 def place(index, x, y):
+    global use
+    global locList
     use[index] = 1
     locList[index] = (x, y)
     for i in range(picList[index][1].size[0]):
@@ -100,7 +97,8 @@ def place(index, x, y):
     return True
 
 def killGap(x):
-    fillHeight = 2000000
+    global pxH
+    fillHeight = INF
     if x - 1 >= 0:
         if pxH[x - 1] < fillHeight:
             fillHeight = pxH[x - 1]
@@ -113,13 +111,10 @@ def killGap(x):
     	
 
 def work():
-    global minH
-    global minX
-    global minL
-    global pxH
     global use
-    use = [0] * 1000
-    pxH = [0] * 4096
+    global pxH
+    use = [0] * MAX_PIC_NUM
+    pxH = [0] * MAX_TARGET_SIZE
     cur = 0
     getMinHXL()
     while True:
@@ -163,9 +158,10 @@ for pic in picList:
         maxLen = pic[1].size[1]
 
 minPower = int(math.log(maxLen) / math.log(2))
+maxPower = int(math.log(MAX_TARGET_SIZE) / math.log(2))
 
 find = False
-for i in range(minPower, 12):
+for i in range(minPower, maxPower):
     t = 2**i
     width = t
     height = t
@@ -194,11 +190,13 @@ if find:
     outImage = Image.new('RGBA', (width, height), bgcolor)
     for i in range(picN):
         outImage.paste(picList[i][1], locList[i])
-    outName = os.path.split(path)[-1]
+    absPath = os.path.abspath(path)
+    splitPath = os.path.split(absPath)
+    outName = splitPath[-1]
     if len(outName) == 0:
-        outName = os.path.split(path)[-2]
-    if cmp(outName, '.') == 0:
-        outName = 'pwd'
+        outName = os.path.split(splitPath[-2])[-1]
+    if len(outName) == 0:
+        outName = 'noname'
     outImage.save(outName + '.png')
     ## sip represent for Sub Image Pool
     ## it is a file format for Fountain game engine

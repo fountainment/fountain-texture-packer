@@ -29,8 +29,8 @@ def picCmp(picA, picB):
             return cmp(imB.size[i], imA.size[i])
     return cmp(nameA, nameB)
 
-if len(sys.argv) != 2:
-    print('usage: ftTexPac.py [PATH]')
+if len(sys.argv) != 2 and len(sys.argv) != 3:
+    print('usage: ftTexPac.py [PATH] [OUTPUTNAME]')
     exit(0)
 
 path = sys.argv[1]
@@ -197,6 +197,8 @@ if find:
         outName = os.path.split(splitPath[-2])[-1]
     if len(outName) == 0:
         outName = 'noname'
+    if len(sys.argv) == 3:
+        outName = sys.argv[2];
     outImage.save(outName + '.png')
     ## sip represent for Sub Image Pool
     ## it is a file format for Fountain game engine

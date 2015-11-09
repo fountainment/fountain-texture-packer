@@ -161,7 +161,7 @@ minPower = int(math.log(maxLen) / math.log(2))
 maxPower = int(math.log(MAX_TARGET_SIZE) / math.log(2))
 
 find = False
-for i in range(minPower, maxPower):
+for i in range(minPower, maxPower + 1):
     t = 2**i
     width = t
     height = t

@@ -1,217 +1,287 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import sys, os, math
 import PIL.Image as Image
 
-MAX_PIC_NUM = 2000
-MAX_TARGET_SIZE = 4096
-INF = MAX_TARGET_SIZE * 2
+def imageCmp(imA, imB):
+    sa, sb = imA['size'], imB['size']
+    na, nb = imA['name'], imB['name']
+    if sa[0] != sb[0]:
+        return cmp(sb[0], sa[0])
+    if sa[1] != sb[1]:
+        return cmp(sb[1], sa[1])
+    return cmp(na, nb)
 
-typeFilter = ['png', 'jpg', 'jpeg', 'gif', 'bmp', '']
-## you can add more to this typeFilter, as long as the PIL support it
-## this typeFilter is to help dealing with files faster
+def nameCmp(imA, imB):
+    na, nb = imA['name'], imB['name']
+    return cmp(na, nb)
 
-def goThrough(rootDir):
-    ans = []
-    walkList = os.walk(rootDir)
-    root, dirs, files = walkList.next() 
-    for f in files:
-        suffix = f.split('.')[-1]
-        if suffix.lower() in typeFilter:
-            ans.append((os.path.join(root, f), f))
-    return ans
+def log2(n):
+    return math.log(n) / math.log(2)
 
-def picCmp(picA, picB):
-    nameA, imA = picA
-    nameB, imB = picB
-    for i in range(2):
-        if imA.size[i] != imB.size[i]:
-            return cmp(imB.size[i], imA.size[i])
-    return cmp(nameA, nameB)
+def isTransp(pixel):
+    return pixel[3] == 0.0
 
-if len(sys.argv) != 2 and len(sys.argv) != 3:
-    print('usage: ftTexPac.py [PATH] [OUTPUTNAME]')
-    exit(0)
+def isBlue(pixel):
+    return pixel == (0.0, 0.0, 1.0)
 
-path = sys.argv[1]
-
-if not os.path.isdir(path):
-    print('error: ' + path + ' is not a path!')
-    exit(0)
-
-picPathList = goThrough(path)
-picList = []
-
-for picPath, name in picPathList:
-    isPic = True
-    try:
-        im = Image.open(picPath)
-    except IOError:
-        isPic = False
-    if isPic:
-        picList.append((name, im))
-
-picList.sort(picCmp)
-picN = len(picList)
-
-if picN == 0:
-    print('there is no pic in ' + path + '!')
-    exit(0)
-
-for name, im in picList:
-    print('%-50s %5s %5dx%-5d' % (name, im.format, im.size[0], im.size[1]) + im.mode)
-
-use = [0] * MAX_PIC_NUM
-pxH = [0] * MAX_TARGET_SIZE
-locList = [(0, 0)] * MAX_PIC_NUM
-
-def getMinHXL():
-    global minH
-    global minX
-    global minL
-    minX = 0
-    minH = height + 1
-    minL = 0
-    for i in range(width):
-        if pxH[i] < minH:
-            minX = i
-            minH = pxH[i]
-    for i in range(minX, width):
-        if pxH[i] == minH:
-            minL += 1
-        else:
-            break
-
-def place(index, x, y):
-    global use
-    global locList
-    use[index] = 1
-    locList[index] = (x, y)
-    for i in range(picList[index][1].size[0]):
-        if x + i >= width:
-            break
-        pxH[x + i] += picList[index][1].size[1]
-        if pxH[x + i] > height:
-            return False
-    getMinHXL()
-    return True
-
-def killGap(x):
-    global pxH
-    fillHeight = INF
-    if x - 1 >= 0:
-        if pxH[x - 1] < fillHeight:
-            fillHeight = pxH[x - 1]
-    if x + minL < width:
-        if pxH[x + minL] < fillHeight:
-            fillHeight = pxH[x + minL]
-    for i in range(x, x + minL):
-        pxH[i] = fillHeight
-    getMinHXL()
-    	
-
-def work():
-    global use
-    global pxH
-    use = [0] * MAX_PIC_NUM
-    pxH = [0] * MAX_TARGET_SIZE
-    cur = 0
-    getMinHXL()
-    while True:
-        if cur >= picN:
-            break
-        if (use[cur] == 0) and (minL >= picList[cur][1].size[0]):
-            tmp = place(cur, minX, minH)
-            if not tmp:
-                return False
-        else:
-            if use[cur] == 1:
-                cur += 1
-                continue
-            if (minL == width) or (minH > height):
-                return False
-            gapCanFill = False
-            for fill in range(cur + 1, picN):
-                if (use[fill] == 0) and (minL >= picList[fill][1].size[0]):
-                    tmp = place(fill, minX, minH)
-                    if not tmp:
-                        return False
-                    gapCanFill = True
-                    break
-            if not gapCanFill:
-                killGap(minX)
-            continue
-        cur += 1
-    ss = 0
-    for i in range(picN):
-        ss += use[i]
-    if ss == picN:
-        return True
+def getBox(image):
+    pl = list(image.getdata())
+    datasize = len(pl[0])
+    if datasize == 3:
+        jfunc = isBlue
+    elif datasize == 4:
+        jfunc = isTransp
     else:
+        return (0, 0) + image.size
+    sz = image.size
+    l, b, r, t = sz[0], sz[1], 0, 0
+    for y in range(sz[1]):
+        minx, maxx = sz[0], 0
+        emptyRow = True
+        for x in range(sz[0]):
+            if not jfunc(pl[y * sz[0] + x]):
+                minx = min(minx, x)
+                maxx = max(maxx, x)
+                emptyRow = False
+        if not emptyRow:
+            b = min(y, b)
+            t = max(y, t)
+        l = min(minx, l)
+        r = max(maxx, r)
+    return (l, b, r + 1, t + 1)
+
+def getGapInfo(pixelUse):
+    gapH = float('inf')
+    gapX = 0
+    gapL = 0
+    width = len(pixelUse)
+    for i in range(width):
+        if pixelUse[i] < gapH:
+            gapX = i
+            gapH = pixelUse[i]
+    for i in range(gapX, width):
+        if pixelUse[i] == gapH:
+            gapL += 1
+        else:
+            break
+    return (gapH, gapX, gapL)
+
+def killGap(pixelUse, gapX, gapL):
+    width = len(pixelUse)
+    fillHeight = float('inf')
+    if gapX - 1 >= 0:
+        fillHeight = min(fillHeight, pixelUse[gapX - 1])
+    if gapX + gapL < width:
+        fillHeight = min(fillHeight, pixelUse[gapX + gapL])
+    for i in range(gapX, gapX + gapL):
+        pixelUse[i] = fillHeight
+
+class TexPac:
+
+    def __init__(self):
+
+        #packing arguments
+        self.__typeFilter = ['', 'png', 'jpg', 'jpeg', 'gif', 'bmp']
+        self.__maxPackSize = 2048
+        self.__inf = self.__maxPackSize * 2
+        self.__cutBlank = True
+
+        #runtime values
+        self.__imagelist = []
+
+        #output arguments
+        self.__outImageList = []
+        self.__outSize = (0, 0)
+        self.__outName = None
+        self.__outInfo = None
+
+    def packPaths(self, pathlist):
+        for path in pathlist:
+            self.packPath(path)
+
+    def packPath(self, path):
+        if self.__outName == None:
+            self.__outName = os.path.split(os.path.abspath(path))[-1]
+            if len(outname) == 0:
+                outname = 'noname'
+        filelist = []
+        walkList = os.walk(path)
+        root, dirs, files = walkList.next()
+        for f in files:
+            suffix = f.split('.')[-1]
+            if suffix.lower() in self.__typeFilter:
+                filelist.append(f)
+        self.packFiles(root, filelist)
+
+    def packFiles(self, root, filelist):
+        if len(filelist) == 0:
+            print('error: ' + 'no pic to pack!')
+            return
+
+        self.__getImageList(root, filelist)
+        if self.__cutBlank:
+            self.__cutImageBlank()
+        self.__sortImageList()
+        find = self.__findSolution()
+
+        if find:
+            self.__output()
+        else:
+            print('error: no solution!')
+        self.__clear()
+
+    def setMaxPackSize(self, maxPackSize):
+        self.__maxPackSize = maxPackSize
+        self.__inf = maxPackSize * 2
+
+    def setOutputName(self, outname):
+        self.__outName = outname
+
+    def __getImageList(self, root, filelist):
+        self.__imagelist = []
+        for f in filelist:
+            imagepath = os.path.join(root, f)
+            try:
+                im = Image.open(imagepath)
+            except IOError:
+                continue
+            self.__imagelist.append({'name': f, 'im': im, 'size': im.size, 'pos': (0, 0), 'anchor': (0.0, 0.0)})
+
+    def __cutImageBlank(self):
+        for image in self.__imagelist:
+            box = getBox(image['im'])
+            boxsize = (box[2] - box[0], box[3] - box[1])
+            imsize = image['size']
+            if boxsize != imsize:
+                image['im'] = image['im'].crop(box)
+                image['size'] = image['im'].size
+                image['anchor'] = ((box[0] + box[2] - imsize[0]) / 2.0, (box[1] + box[3] - imsize[1]) / 2.0)
+
+    def __sortImageList(self):
+        self.__imagelist.sort(imageCmp)
+
+    def __trySolution(self, width, height):
+        imageNum = len(self.__imagelist)
+        imageUse = [0] * imageNum
+        pixelUse = [0] * width
+        curImage = 0
+        gapH, gapX, gapL = getGapInfo(pixelUse)
+        while True:
+            if curImage >= imageNum:
+                break
+            if imageUse[curImage] == 1:
+                curImage += 1
+                continue
+            imageW, imageH = self.__imagelist[curImage]['size']
+            if gapL >= imageW:
+                if gapH + imageH <= height:
+                    for i in range(gapX, gapX + imageW):
+                        pixelUse[i] += imageH
+                    self.__imagelist[curImage]['pos'] = (gapX, gapH)
+                    gapH, gapX, gapL = getGapInfo(pixelUse) 
+                    imageUse[curImage] = 1
+                    curImage += 1
+                else:
+                    return False
+            else:
+                if (gapL >= width) or (gapH >= height):
+                    return False
+                gapCanFill = False
+                for imageI in range(curImage + 1, imageNum):
+                    imageW, imageH = self.__imagelist[imageI]['size']
+                    if (imageUse[imageI] == 0) and (gapL >= imageW):
+                        if gapH + imageH <= height:
+                            for i in range(gapX, gapX + imageW):
+                                pixelUse[i] += imageH
+                            self.__imagelist[imageI]['pos'] = (gapX, gapH)
+                            gapH, gapX, gapL = getGapInfo(pixelUse)
+                            imageUse[imageI] = 1
+                            gapCanFill = True
+                            break
+                        else:
+                            return False
+                if not gapCanFill:
+                    killGap(pixelUse, gapX, gapL)
+                    gapH, gapX, gapL = getGapInfo(pixelUse)
+        return True
+
+    def __findSolution(self):
+        sizeSum = 0
+        maxWidth = 0
+        for image in self.__imagelist:
+            name = image['name']
+            im = image['im']
+            w, h = image['size']
+            anchor = image['anchor']
+            print('%-30s %4dx%-4d %4s (%.1f, %.1f)' % ((name, w, h, im.mode) + (anchor[0], anchor[1])))
+            sizeSum += w * h
+            maxWidth = max(maxWidth, w)
+        minPower = int(log2(max(maxWidth, int(math.sqrt(sizeSum)))))
+        maxPower = int(log2(self.__maxPackSize))
+        for i in range(minPower, maxPower + 1):
+            s = 2**i
+            if self.__trySolution(s, s):
+                self.__outSize = (s, s)
+                return True
+            if self.__trySolution(s * 2, s):
+                self.__outSize = (s * 2, s)
+                return True
         return False
 
-maxLen = 0
-for pic in picList:
-    if pic[1].size[0] > maxLen:
-        maxLen = pic[1].size[0]
-    if pic[1].size[1] > maxLen:
-        maxLen = pic[1].size[1]
+    def __output(self):
+        bgcolor = (0, 0, 0, 0)
+        outImage = Image.new('RGBA', self.__outSize, bgcolor)
+        for image in self.__imagelist:
+            outImage.paste(image['im'], image['pos'])
+        outImage.save(self.__outName + '.png')
 
-minPower = int(math.log(maxLen) / math.log(2))
-maxPower = int(math.log(MAX_TARGET_SIZE) / math.log(2))
+        imageNum = len(self.__imagelist)
+        outFile = open(self.__outName + '.ipi', 'w')
+        outFile.write('%d %d\n' % self.__outSize)
+        outFile.write('%d\n' % imageNum)
+        outInfo = []
+        self.__imagelist.sort(nameCmp)
+        for image in self.__imagelist:
+            name = image['name']
+            size = image['size']
+            pos = image['pos']
+            anchor = image['anchor']
+            outInfo.append('%s %d %d %d %d %.1f %.1f\n' % ((name,) + size + pos + anchor))
+        outFile.writelines(outInfo)
+        outFile.close()
 
-find = False
-for i in range(minPower, maxPower + 1):
-    t = 2**i
-    width = t
-    height = t
-    if work():
-        find = True
-        break
-    width = t / 2
-    height = t * 2
-    if work():
-        find = True
-        break
-    width = t * 2
-    height = t
-    if work():
-        find = True
-        break
-    width = t
-    height = t * 2
-    if work():
-        find = True
-        break
+    def __clear(self):
+        self.__imagelist = []
+        self.__outImageList = []
+        self.__outSize = (0, 0)
+        self.__outName = None
+        self.__outInfo = None
 
-if find:
-    print('find it!')
-    bgcolor = (255, 255, 255, 0)
-    outImage = Image.new('RGBA', (width, height), bgcolor)
-    for i in range(picN):
-        outImage.paste(picList[i][1], locList[i])
-    absPath = os.path.abspath(path)
-    splitPath = os.path.split(absPath)
-    outName = splitPath[-1]
-    if len(outName) == 0:
-        outName = os.path.split(splitPath[-2])[-1]
-    if len(outName) == 0:
-        outName = 'noname'
-    if len(sys.argv) == 3:
-        outName = sys.argv[2];
-    outImage.save(outName + '.png')
-    ## sip represent for Sub Image Pool
-    ## it is a file format for Fountain game engine
-    outFile = open(outName + '.sip', 'w')
-    outFile.write('%d %d\n' % (width, height))
-    outFile.write('%d\n' % picN)
-    outInfo = []
-    for i in range(picN):
-        name, im = picList[i]
-        size = im.size
-        pos = locList[i]
-        outInfo.append('%s %d %d %d %d\n' % (name, size[0], size[1], pos[0], pos[1]))
-    outFile.writelines(outInfo)
-    outFile.close()
-else:
-    print('sorry, not find a solution.')
+def main():
+    argn = len(sys.argv)
+
+    if argn != 2 and argn != 3:
+        print('usage: ftTexPac.py [PATH] [OUTPUTNAME]')
+        exit(0)
+
+    if not os.path.isdir(sys.argv[1]):
+        print('error: ' + sys.argv[1] + ' is not a path!')
+        return
+
+    path = os.path.abspath(sys.argv[1])
+
+    if argn == 3:
+        outname = sys.argv[2]
+    else:
+        outname = os.path.split(path)[-1]
+    if len(outname) == 0:
+        outname = 'noname'
+
+    packer = TexPac()
+    packer.setMaxPackSize(4096)
+    packer.setOutputName(outname)
+    packer.packPath(path)
+
+if __name__ == '__main__':
+    main()

@@ -12,14 +12,14 @@ Dependencies
 How to use
 ----------
 
-Try "python ftTexPac.py PATH", PATH is the place where you put the images
+Try "python ftTexPacN.py PATH", PATH is the place where you put the images
 
 Examples:
 
-         $ python ftTexPac.py ~/Documents/image
-         $ python ftTexPac.py ./image
+         $ python ftTexPacN.py ~/Documents/image
+         $ python ftTexPacN.py ./image
 
-Then you will get two files in your current working directory, one .png and one .sip
+Then you will get two files in your current working directory, one .png and one .ipi
 
 .sip file
 ---------
@@ -29,6 +29,15 @@ sip represent for SubImagePool
 The file contains info of packed images for Fountain game engine to read
 
 Just use your text editor to view it, the format is simple
+
+(become history)
+
+.ipi file
+---------
+
+New file format to describe subimage
+
+Includes anchor information
 
 Tips
 ----

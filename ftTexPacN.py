@@ -164,7 +164,7 @@ class TexPac:
             if boxsize != imsize:
                 image['im'] = image['im'].crop(box)
                 image['size'] = image['im'].size
-                image['anchor'] = ((box[0] + box[2] - imsize[0]) / 2.0, (box[1] + box[3] - imsize[1]) / 2.0)
+                image['anchor'] = ((imsize[0] - box[0] - box[2]) / 2.0, (imsize[1] - box[1] - box[3]) / 2.0)
 
     def __sortImageList(self):
         self.__imagelist.sort(imageCmp)

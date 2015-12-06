@@ -106,7 +106,9 @@ class TexPac:
 
     def packPaths(self, pathlist):
         for path in pathlist:
+            print(path)
             self.packPath(path)
+            print('')
 
     def packPath(self, path):
         if self.__outName == None:

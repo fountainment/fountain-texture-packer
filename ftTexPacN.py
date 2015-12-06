@@ -96,6 +96,14 @@ class TexPac:
         self.__outName = None
         self.__outInfo = None
 
+    def packPathsInPath(self, path):
+        walkList = os.walk(path)
+        root, dirs, files = walkList.next()
+        paths = []
+        for d in dirs:
+            paths.append(os.path.join(root, d))
+        self.packPaths(paths)
+
     def packPaths(self, pathlist):
         for path in pathlist:
             self.packPath(path)
@@ -103,8 +111,8 @@ class TexPac:
     def packPath(self, path):
         if self.__outName == None:
             self.__outName = os.path.split(os.path.abspath(path))[-1]
-            if len(outname) == 0:
-                outname = 'noname'
+            if len(self.__outName) == 0:
+                self.__outName = 'noname'
         filelist = []
         walkList = os.walk(path)
         root, dirs, files = walkList.next()
@@ -257,6 +265,10 @@ class TexPac:
         self.__outSize = (0, 0)
         self.__outName = None
         self.__outInfo = None
+
+def packAll(path):
+    packer = TexPac()
+    packer.packPathsInPath(path)
 
 def main():
     argn = len(sys.argv)

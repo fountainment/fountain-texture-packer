@@ -49,7 +49,7 @@ def getBox(image):
             t = max(y, t)
         l = min(minx, l)
         r = max(maxx, r)
-    return (l, b, r + 1, t + 1)
+    return (l - 1, b - 1, r + 2, t + 2)
 
 def getGapInfo(pixelUse):
     gapH = float('inf')

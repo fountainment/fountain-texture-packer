@@ -277,7 +277,7 @@ def main():
 
     if argn != 2 and argn != 3:
         print('usage: ftTexPac.py [PATH] [OUTPUTNAME]')
-        exit(0)
+        return
 
     if not os.path.isdir(sys.argv[1]):
         print('error: ' + sys.argv[1] + ' is not a path!')

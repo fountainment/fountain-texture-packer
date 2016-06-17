@@ -14,6 +14,8 @@ def imageCmp(imA, imB):
 
 def nameCmp(imA, imB):
     na, nb = imA['name'], imB['name']
+    na = ("%03d" % len(na)) + na
+    nb = ("%03d" % len(nb)) + nb
     return cmp(na, nb)
 
 def log2(n):

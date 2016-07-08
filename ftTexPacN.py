@@ -51,7 +51,7 @@ def getBox(image):
             t = max(y, t)
         l = min(minx, l)
         r = max(maxx, r)
-    return (l - 1, b - 1, r + 2, t + 2)
+    return (l, b, r + 1, t + 1)
 
 def getGapInfo(pixelUse):
     gapH = float('inf')
@@ -87,6 +87,7 @@ class TexPac:
         self.__typeFilter = ['', 'png', 'jpg', 'jpeg', 'gif', 'bmp']
         self.__maxPackSize = 2048
         self.__inf = self.__maxPackSize * 2
+        self.__reservedBlank = (1, 1)
         self.__cutBlank = True
 
         #runtime values
@@ -133,7 +134,7 @@ class TexPac:
 
         self.__getImageList(root, filelist)
         if self.__cutBlank:
-            self.__cutImageBlank()
+            self.__cutImageBlank(self.__reservedBlank)
         self.__sortImageList()
         find = self.__findSolution()
 
@@ -142,6 +143,9 @@ class TexPac:
         else:
             print('error: no solution!')
         self.__clear()
+
+    def setReservedBlank(self, reservedBlank):
+        self.__reservedBlank = reservedBlank
 
     def setMaxPackSize(self, maxPackSize):
         self.__maxPackSize = maxPackSize
@@ -160,9 +164,10 @@ class TexPac:
                 continue
             self.__imagelist.append({'name': f, 'im': im, 'size': im.size, 'pos': (0, 0), 'anchor': (0.0, 0.0)})
 
-    def __cutImageBlank(self):
+    def __cutImageBlank(self, reservedBlank):
         for image in self.__imagelist:
             box = getBox(image['im'])
+            box = (box[0] - reservedBlank[0], box[1] - reservedBlank[1], box[2] + reservedBlank[0], box[3] + reservedBlank[1])
             boxsize = (box[2] - box[0], box[3] - box[1])
             imsize = image['size']
             if boxsize != imsize:
@@ -296,6 +301,7 @@ def main():
 
     packer = TexPac()
     packer.setMaxPackSize(4096)
+    packer.setReservedBlank((1, 1))
     packer.setOutputName(outname)
     packer.packPath(path)
 

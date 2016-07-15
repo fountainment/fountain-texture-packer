@@ -87,7 +87,8 @@ class TexPac:
         self.__typeFilter = ['', 'png', 'jpg', 'jpeg', 'gif', 'bmp']
         self.__maxPackSize = 2048
         self.__inf = self.__maxPackSize * 2
-        self.__reservedBlank = (1, 1)
+        self.__reservedBlank = (0, 0)
+        self.__reservedOuterBlank = (1, 1)
         self.__cutBlank = True
 
         #runtime values
@@ -134,7 +135,7 @@ class TexPac:
 
         self.__getImageList(root, filelist)
         if self.__cutBlank:
-            self.__cutImageBlank(self.__reservedBlank)
+            self.__cutImageBlank()
         self.__sortImageList()
         find = self.__findSolution()
 
@@ -146,6 +147,9 @@ class TexPac:
 
     def setReservedBlank(self, reservedBlank):
         self.__reservedBlank = reservedBlank
+
+    def setReservedOuterBlank(self, reservedOuterBlank):
+        self.__reservedOuterBlank = reservedOuterBlank
 
     def setMaxPackSize(self, maxPackSize):
         self.__maxPackSize = maxPackSize
@@ -164,16 +168,21 @@ class TexPac:
                 continue
             self.__imagelist.append({'name': f, 'im': im, 'size': im.size, 'pos': (0, 0), 'anchor': (0.0, 0.0)})
 
-    def __cutImageBlank(self, reservedBlank):
+    def __cutImageBlank(self):
         for image in self.__imagelist:
             box = getBox(image['im'])
-            box = (box[0] - reservedBlank[0], box[1] - reservedBlank[1], box[2] + reservedBlank[0], box[3] + reservedBlank[1])
             boxsize = (box[2] - box[0], box[3] - box[1])
-            imsize = image['size']
-            if boxsize != imsize:
-                image['im'] = image['im'].crop(box)
-                image['size'] = image['im'].size
-                image['anchor'] = ((imsize[0] - box[0] - box[2]) / 2.0, (imsize[1] - box[1] - box[3]) / 2.0)
+            originsize = image['size']
+            image['im'] = image['im'].crop(box)
+            image['size'] = boxsize
+            rb = self.__reservedBlank
+            if rb != (0, 0):
+                newBoxsize = (boxsize[0] + rb[0] * 2, boxsize[1] + rb[1] * 2)
+                newImage = Image.new('RGBA', newBoxsize, (0, 0, 0, 0))
+                newImage.paste(image['im'], rb)
+                image['im'] = newImage
+                image['size'] = newBoxsize
+            image['anchor'] = ((originsize[0] - box[0] - box[2]) * 0.5, (originsize[1] - box[1] - box[3]) * 0.5)
 
     def __sortImageList(self):
         self.__imagelist.sort(imageCmp)
@@ -184,18 +193,20 @@ class TexPac:
         pixelUse = [0] * width
         curImage = 0
         gapH, gapX, gapL = getGapInfo(pixelUse)
+        rob = self.__reservedOuterBlank
         while True:
             if curImage >= imageNum:
                 break
             if imageUse[curImage] == 1:
                 curImage += 1
                 continue
-            imageW, imageH = self.__imagelist[curImage]['size']
+            imageW = self.__imagelist[curImage]['size'][0] + rob[0] * 2
+            imageH = self.__imagelist[curImage]['size'][1] + rob[1] * 2
             if gapL >= imageW:
                 if gapH + imageH <= height:
                     for i in range(gapX, gapX + imageW):
                         pixelUse[i] += imageH
-                    self.__imagelist[curImage]['pos'] = (gapX, gapH)
+                    self.__imagelist[curImage]['pos'] = (gapX + rob[0], gapH + rob[1])
                     gapH, gapX, gapL = getGapInfo(pixelUse) 
                     imageUse[curImage] = 1
                     curImage += 1
@@ -206,12 +217,13 @@ class TexPac:
                     return False
                 gapCanFill = False
                 for imageI in range(curImage + 1, imageNum):
-                    imageW, imageH = self.__imagelist[imageI]['size']
+                    imageW = self.__imagelist[curImage]['size'][0] + rob[0] * 2
+                    imageH = self.__imagelist[curImage]['size'][1] + rob[1] * 2
                     if (imageUse[imageI] == 0) and (gapL >= imageW):
                         if gapH + imageH <= height:
                             for i in range(gapX, gapX + imageW):
                                 pixelUse[i] += imageH
-                            self.__imagelist[imageI]['pos'] = (gapX, gapH)
+                            self.__imagelist[imageI]['pos'] = (gapX + rob[0], gapH + rob[1])
                             gapH, gapX, gapL = getGapInfo(pixelUse)
                             imageUse[imageI] = 1
                             gapCanFill = True
@@ -301,7 +313,8 @@ def main():
 
     packer = TexPac()
     packer.setMaxPackSize(4096)
-    packer.setReservedBlank((1, 1))
+    packer.setReservedBlank((0, 0))
+    packer.setReservedOuterBlank((1, 1))
     packer.setOutputName(outname)
     packer.packPath(path)
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
 import sys, os, math
+import Queue
 import PIL.Image as Image
+from psd_tools import PSDImage, Layer, Group
 
 def imageCmp(imA, imB):
     sa, sb = imA['size'], imB['size']
@@ -128,21 +130,18 @@ class TexPac:
                 filelist.append(f)
         self.packFiles(root, filelist)
 
+    def packPsd(self, psdfile):
+        self.__getImageListFromPsd(psdfile)
+        self.__pack()
+        self.__clear()
+
     def packFiles(self, root, filelist):
         if len(filelist) == 0:
             print('error: ' + 'no pic to pack!')
             return
 
         self.__getImageList(root, filelist)
-        if self.__cutBlank:
-            self.__cutImageBlank()
-        self.__sortImageList()
-        find = self.__findSolution()
-
-        if find:
-            self.__output()
-        else:
-            print('error: no solution!')
+        self.__pack()
         self.__clear()
 
     def setReservedBlank(self, reservedBlank):
@@ -168,6 +167,35 @@ class TexPac:
                 continue
             self.__imagelist.append({'name': f, 'im': im, 'size': im.size, 'pos': (0, 0), 'anchor': (0.0, 0.0)})
 
+    def __getImageListFromPsd(self, psdfile):
+        psd = PSDImage.load(psdfile)
+        psdsize = (psd.header.width, psd.header.height)
+        layer_queue = Queue.Queue(maxsize = 2000)
+        index = 0
+        for layer in psd.layers:
+            layer_queue.put(layer)
+        while not layer_queue.empty():
+            t = layer_queue.get()
+            if t.visible and type(t) == Group:
+                for layer in t.layers:
+                    layer_queue.put(layer)
+            elif t.visible and type(t) == Layer:
+                im = t.as_PIL()
+                loc = ((t.bbox.x1 + t.bbox.x2 - psdsize[0]) * 0.5, (t.bbox.y1 + t.bbox.y2 - psdsize[1]) * 0.5)
+                self.__imagelist.append({'name': '%d' % index, 'im': im, 'size': im.size, 'pos': (0, 0), 'anchor': (-loc[0], -loc[1])})
+                index += 1
+
+    def __pack(self):
+        if self.__cutBlank:
+            self.__cutImageBlank()
+        self.__sortImageList()
+        find = self.__findSolution()
+
+        if find:
+            self.__output()
+        else:
+            print('error: no solution!')
+
     def __cutImageBlank(self):
         for image in self.__imagelist:
             box = getBox(image['im'])
@@ -182,7 +210,7 @@ class TexPac:
                 newImage.paste(image['im'], rb)
                 image['im'] = newImage
                 image['size'] = newBoxsize
-            image['anchor'] = ((originsize[0] - box[0] - box[2]) * 0.5, (originsize[1] - box[1] - box[3]) * 0.5)
+            image['anchor'] = ((originsize[0] - box[0] - box[2]) * 0.5 + image['anchor'][0], (originsize[1] - box[1] - box[3]) * 0.5 + image['anchor'][1])
 
     def __sortImageList(self):
         self.__imagelist.sort(imageCmp)
@@ -295,11 +323,16 @@ def main():
     argn = len(sys.argv)
 
     if argn != 2 and argn != 3:
-        print('usage: ftTexPac.py [PATH] [OUTPUTNAME]')
+        print('usage: ftTexPac.py [FOLDER/PSDFILE] [OUTPUTNAME]')
         return
 
-    if not os.path.isdir(sys.argv[1]):
-        print('error: ' + sys.argv[1] + ' is not a path!')
+    packType = ''
+    if os.path.isdir(sys.argv[1]):
+        packType = 'folder'
+    elif os.path.isfile(sys.argv[1]):
+        packType = 'psdfile'
+    else:
+        print('error: ' + sys.argv[1] + ' is neigher a folder or a psd file!')
         return
 
     path = os.path.abspath(sys.argv[1])
@@ -308,6 +341,8 @@ def main():
         outname = sys.argv[2]
     else:
         outname = os.path.split(path)[-1]
+        if outname[-4:] == '.psd':
+            outname = outname[:-4]
     if len(outname) == 0:
         outname = 'noname'
 
@@ -316,7 +351,10 @@ def main():
     packer.setReservedBlank((0, 0))
     packer.setReservedOuterBlank((1, 1))
     packer.setOutputName(outname)
-    packer.packPath(path)
+    if packType == 'folder':
+        packer.packPath(path)
+    elif packType == 'psdfile':
+        packer.packPsd(path)
 
 if __name__ == '__main__':
     main()

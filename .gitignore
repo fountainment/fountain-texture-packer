@@ -2,5 +2,8 @@
 tmp
 pack
 output
+res
 anchor.txt
 group.txt
+*.exe
+*.dll

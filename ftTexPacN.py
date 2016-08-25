@@ -91,6 +91,8 @@ class TexPac:
         self.__inf = self.__maxPackSize * 2
         self.__reservedBlank = (0, 0)
         self.__reservedOuterBlank = (1, 1)
+        self.__reservedPath = None
+        self.__reservePath = False
         self.__cutBlank = True
 
         #runtime values
@@ -101,13 +103,15 @@ class TexPac:
         self.__outSize = (0, 0)
         self.__outName = None
         self.__outInfo = None
+        self.__outFolder = None
 
     def packPathsInPath(self, path):
         walkList = os.walk(path)
-        root, dirs, files = walkList.next()
         paths = []
-        for d in dirs:
-            paths.append(os.path.join(root, d))
+        for i in walkList:
+            root, dirs, files = i
+            for d in dirs:
+                paths.append(os.path.join(root, d))
         self.packPaths(paths)
 
     def packPaths(self, pathlist):
@@ -128,6 +132,7 @@ class TexPac:
             suffix = f.split('.')[-1]
             if suffix.lower() in self.__typeFilter:
                 filelist.append(f)
+        self.__setReservedPath(os.path.split(path)[0])
         self.packFiles(root, filelist)
 
     def packPsd(self, psdfile):
@@ -156,6 +161,15 @@ class TexPac:
 
     def setOutputName(self, outname):
         self.__outName = outname
+
+    def setOutputFolder(self, outfolder):
+        self.__outFolder = outfolder
+
+    def setReservePath(self, reservePath):
+        self.__reservePath = reservePath
+
+    def __setReservedPath(self, reservedPath):
+        self.__reservedPath = reservedPath
 
     def __getImageList(self, root, filelist):
         self.__imagelist = []
@@ -289,12 +303,20 @@ class TexPac:
     def __output(self):
         bgcolor = (0, 0, 0, 0)
         outImage = Image.new('RGBA', self.__outSize, bgcolor)
+        filePath = ""
+        if self.__outFolder != None:
+            filePath = self.__outFolder
+        if self.__reservePath == True and self.__reservedPath != None:
+            filePath = os.path.join(filePath, self.__reservedPath)
+        if not os.path.exists(filePath):
+            os.makedirs(filePath)
+        fileName = os.path.join(filePath, self.__outName)
         for image in self.__imagelist:
             outImage.paste(image['im'], image['pos'])
-        outImage.save(self.__outName + '.png')
+        outImage.save(fileName + '.png')
 
         imageNum = len(self.__imagelist)
-        outFile = open(self.__outName + '.ipi', 'w')
+        outFile = open(fileName + '.ipi', 'w')
         outFile.write('%d %d\n' % self.__outSize)
         outFile.write('%d\n' % imageNum)
         outInfo = []
@@ -314,9 +336,12 @@ class TexPac:
         self.__outSize = (0, 0)
         self.__outName = None
         self.__outInfo = None
+        self.__reservedPath = None
 
 def packAll(path):
     packer = TexPac()
+    packer.setOutputFolder('output')
+    packer.setReservePath(True)
     packer.packPathsInPath(path)
 
 def main():

@@ -337,7 +337,7 @@ class TexPac:
             size = image['size']
             pos = image['pos']
             anchor = image['anchor']
-            anchor = (anchor[0] + offset[0], anchor[1] + offset[1])
+            anchor = (anchor[0] + offset[0], anchor[1] - offset[1])
             outInfo.append('%s %d %d %d %d %.1f %.1f\n' % ((name,) + size + pos + anchor))
         outFile.writelines(outInfo)
         outFile.close()

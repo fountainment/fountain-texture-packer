@@ -100,6 +100,7 @@ class TexPac:
         self.__reservedPath = None
         self.__reservePath = False
         self.__cutBlank = True
+        self.__anchorOffsetMap = {}
 
         #runtime values
         self.__imagelist = []
@@ -164,6 +165,9 @@ class TexPac:
     def setMaxPackSize(self, maxPackSize):
         self.__maxPackSize = maxPackSize
         self.__inf = maxPackSize * 2
+
+    def setAnchorOffset(self, ipiname, offset):
+        self.__anchorOffsetMap[ipiname] = offset
 
     def setOutputName(self, outname):
         self.__outName = outname
@@ -316,6 +320,7 @@ class TexPac:
             filePath = os.path.join(filePath, self.__reservedPath)
         if not os.path.exists(filePath):
             os.makedirs(filePath)
+        offset = self.__anchorOffsetMap.get(self.__outName, (0, 0))
         fileName = os.path.join(filePath, self.__outName)
         for image in self.__imagelist:
             outImage.paste(image['im'], image['pos'])
@@ -332,6 +337,7 @@ class TexPac:
             size = image['size']
             pos = image['pos']
             anchor = image['anchor']
+            anchor = (anchor[0] + offset[0], anchor[1] + offset[1])
             outInfo.append('%s %d %d %d %d %.1f %.1f\n' % ((name,) + size + pos + anchor))
         outFile.writelines(outInfo)
         outFile.close()
@@ -348,6 +354,16 @@ def packAll(path):
     packer = TexPac()
     packer.setOutputFolder('output')
     packer.setReservePath(True)
+    if os.path.isfile('anchor.txt'):
+        f = open('anchor.txt', 'r')
+        t = f.readlines()
+        for i in t:
+            name, x, y = i.split()
+            name = os.path.split(name)[-1][:-4]
+            x = float(x)
+            y = float(y)
+            packer.setAnchorOffset(name, (x, y))
+        f.close()
     packer.packPathsInPath(path)
 
 def main():

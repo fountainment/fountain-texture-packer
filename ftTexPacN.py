@@ -149,7 +149,8 @@ class TexPac:
 
     def packFiles(self, root, filelist):
         if len(filelist) == 0:
-            print('error: ' + 'no pic to pack!')
+            self.__clear()
+            print('error: no pic to pack!')
             return
 
         self.__getImageList(root, filelist)
@@ -318,12 +319,13 @@ class TexPac:
             filePath = self.__outFolder
         if self.__reservePath == True and self.__reservedPath != None:
             filePath = os.path.join(filePath, self.__reservedPath)
-        if not os.path.exists(filePath):
+        if not os.path.exists(filePath) and len(filePath) != 0:
             os.makedirs(filePath)
         offset = self.__anchorOffsetMap.get(self.__outName, (0, 0))
         fileName = os.path.join(filePath, self.__outName)
         for image in self.__imagelist:
             outImage.paste(image['im'], image['pos'])
+        print fileName
         outImage.save(fileName + '.png')
 
         imageNum = len(self.__imagelist)

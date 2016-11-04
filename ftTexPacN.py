@@ -53,7 +53,13 @@ def getBox(image):
             t = max(y, t)
         l = min(minx, l)
         r = max(maxx, r)
-    return (l, b, r + 1, t + 1)
+    r += 1
+    t += 1
+    if r < l:
+        r = l
+    if t < b:
+        t = b
+    return (l, b, r, t)
 
 def getGapInfo(pixelUse):
     gapH = float('inf')
@@ -91,7 +97,10 @@ class TexPac:
         self.__inf = self.__maxPackSize * 2
         self.__reservedBlank = (0, 0)
         self.__reservedOuterBlank = (1, 1)
+        self.__reservedPath = None
+        self.__reservePath = False
         self.__cutBlank = True
+        self.__anchorOffsetMap = {}
 
         #runtime values
         self.__imagelist = []
@@ -101,13 +110,15 @@ class TexPac:
         self.__outSize = (0, 0)
         self.__outName = None
         self.__outInfo = None
+        self.__outFolder = None
 
     def packPathsInPath(self, path):
         walkList = os.walk(path)
-        root, dirs, files = walkList.next()
         paths = []
-        for d in dirs:
-            paths.append(os.path.join(root, d))
+        for i in walkList:
+            root, dirs, files = i
+            for d in dirs:
+                paths.append(os.path.join(root, d))
         self.packPaths(paths)
 
     def packPaths(self, pathlist):
@@ -128,6 +139,7 @@ class TexPac:
             suffix = f.split('.')[-1]
             if suffix.lower() in self.__typeFilter:
                 filelist.append(f)
+        self.__setReservedPath(os.path.split(path)[0])
         self.packFiles(root, filelist)
 
     def packPsd(self, psdfile):
@@ -137,7 +149,8 @@ class TexPac:
 
     def packFiles(self, root, filelist):
         if len(filelist) == 0:
-            print('error: ' + 'no pic to pack!')
+            self.__clear()
+            print('error: no pic to pack!')
             return
 
         self.__getImageList(root, filelist)
@@ -154,8 +167,20 @@ class TexPac:
         self.__maxPackSize = maxPackSize
         self.__inf = maxPackSize * 2
 
+    def setAnchorOffset(self, ipiname, offset):
+        self.__anchorOffsetMap[ipiname] = offset
+
     def setOutputName(self, outname):
         self.__outName = outname
+
+    def setOutputFolder(self, outfolder):
+        self.__outFolder = outfolder
+
+    def setReservePath(self, reservePath):
+        self.__reservePath = reservePath
+
+    def __setReservedPath(self, reservedPath):
+        self.__reservedPath = reservedPath
 
     def __getImageList(self, root, filelist):
         self.__imagelist = []
@@ -287,12 +312,22 @@ class TexPac:
     def __output(self):
         bgcolor = (0, 0, 0, 0)
         outImage = Image.new('RGBA', self.__outSize, bgcolor)
+        filePath = ""
+        if self.__outFolder != None:
+            filePath = self.__outFolder
+        if self.__reservePath == True and self.__reservedPath != None:
+            filePath = os.path.join(filePath, self.__reservedPath)
+        if not os.path.exists(filePath) and len(filePath) != 0:
+            os.makedirs(filePath)
+        offset = self.__anchorOffsetMap.get(self.__outName, (0, 0))
+        fileName = os.path.join(filePath, self.__outName)
         for image in self.__imagelist:
             outImage.paste(image['im'], image['pos'])
-        outImage.save(self.__outName + '.png')
+        print fileName
+        outImage.save(fileName + '.png')
 
         imageNum = len(self.__imagelist)
-        outFile = open(self.__outName + '.ipi', 'w')
+        outFile = open(fileName + '.ipi', 'w')
         outFile.write('%d %d\n' % self.__outSize)
         outFile.write('%d\n' % imageNum)
         outInfo = []
@@ -302,6 +337,7 @@ class TexPac:
             size = image['size']
             pos = image['pos']
             anchor = image['anchor']
+            anchor = (anchor[0] + offset[0], anchor[1] - offset[1])
             outInfo.append('%s %d %d %d %d %.1f %.1f\n' % ((name,) + size + pos + anchor))
         outFile.writelines(outInfo)
         outFile.close()
@@ -312,9 +348,22 @@ class TexPac:
         self.__outSize = (0, 0)
         self.__outName = None
         self.__outInfo = None
+        self.__reservedPath = None
 
 def packAll(path):
     packer = TexPac()
+    packer.setOutputFolder('output')
+    packer.setReservePath(True)
+    if os.path.isfile('anchor.txt'):
+        f = open('anchor.txt', 'r')
+        t = f.readlines()
+        for i in t:
+            name, x, y = i.split()
+            name = os.path.split(name)[-1][:-4]
+            x = float(x)
+            y = float(y)
+            packer.setAnchorOffset(name, (x, y))
+        f.close()
     packer.packPathsInPath(path)
 
 def main():

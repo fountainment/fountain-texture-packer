@@ -171,7 +171,6 @@ class TexPac:
         psd = PSDImage.load(psdfile)
         psdsize = (psd.header.width, psd.header.height)
         layer_queue = Queue.Queue(maxsize = 2000)
-        index = 0
         for layer in psd.layers:
             layer_queue.put(layer)
         while not layer_queue.empty():
@@ -182,8 +181,7 @@ class TexPac:
             elif t.visible and type(t) == Layer:
                 im = t.as_PIL()
                 loc = ((t.bbox.x1 + t.bbox.x2 - psdsize[0]) * 0.5, (t.bbox.y1 + t.bbox.y2 - psdsize[1]) * 0.5)
-                self.__imagelist.append({'name': '%d' % index, 'im': im, 'size': im.size, 'pos': (0, 0), 'anchor': (-loc[0], -loc[1])})
-                index += 1
+                self.__imagelist.append({'name': t.name.split()[-1], 'im': im, 'size': im.size, 'pos': (0, 0), 'anchor': (-loc[0], -loc[1])})
 
     def __pack(self):
         if self.__cutBlank:

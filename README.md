@@ -6,7 +6,7 @@ A Python Texture Packer for Fountain game engine
 Dependencies
 ------------
 
-- Python 2.7.x
+- Python 3.x
 - Python Imaging Library(PIL)
 
 How to use
@@ -48,8 +48,3 @@ Licence
 -------
 
 Licensed under the MIT License
-
-Our Site
---------
-
-http://www.fountainment.com/

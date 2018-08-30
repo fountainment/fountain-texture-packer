@@ -1,33 +1,22 @@
 #!/usr/bin/env python
 
 import sys, os, math
-import Queue
+import queue
 import PIL.Image as Image
 from psd_tools import PSDImage, Layer, Group
 
-def imageCmp(imA, imB):
-    sa, sb = imA['size'], imB['size']
-    na, nb = imA['name'], imB['name']
-    if sa[0] != sb[0]:
-        return cmp(sb[0], sa[0])
-    if sa[1] != sb[1]:
-        return cmp(sb[1], sa[1])
-    return cmp(na, nb)
-
-def nameCmp(imA, imB):
-    na, nb = imA['name'], imB['name']
-    na = ("%03d" % len(na)) + na
-    nb = ("%03d" % len(nb)) + nb
-    return cmp(na, nb)
 
 def log2(n):
     return math.log(n) / math.log(2)
 
+
 def isTransp(pixel):
     return pixel[3] == 0.0
 
+
 def isBlue(pixel):
     return pixel == (0.0, 0.0, 1.0)
+
 
 def getBox(image):
     pl = list(image.getdata())
@@ -61,6 +50,7 @@ def getBox(image):
         t = b
     return (l, b, r, t)
 
+
 def getGapInfo(pixelUse):
     gapH = float('inf')
     gapX = 0
@@ -77,6 +67,7 @@ def getGapInfo(pixelUse):
             break
     return (gapH, gapX, gapL)
 
+
 def killGap(pixelUse, gapX, gapL):
     width = len(pixelUse)
     fillHeight = float('inf')
@@ -86,6 +77,7 @@ def killGap(pixelUse, gapX, gapL):
         fillHeight = min(fillHeight, pixelUse[gapX + gapL])
     for i in range(gapX, gapX + gapL):
         pixelUse[i] = fillHeight
+
 
 class TexPac:
 
@@ -134,7 +126,7 @@ class TexPac:
                 self.__outName = 'noname'
         filelist = []
         walkList = os.walk(path)
-        root, dirs, files = walkList.next()
+        root, dirs, files = next(walkList)
         for f in files:
             suffix = f.split('.')[-1]
             if suffix.lower() in self.__typeFilter:
@@ -195,7 +187,7 @@ class TexPac:
     def __getImageListFromPsd(self, psdfile):
         psd = PSDImage.load(psdfile)
         psdsize = (psd.header.width, psd.header.height)
-        layer_queue = Queue.Queue(maxsize = 2000)
+        layer_queue = queue.Queue(maxsize = 2000)
         for layer in psd.layers:
             layer_queue.put(layer)
         while not layer_queue.empty():
@@ -236,7 +228,7 @@ class TexPac:
             image['anchor'] = ((originsize[0] - box[0] - box[2]) * 0.5 + image['anchor'][0], (originsize[1] - box[1] - box[3]) * 0.5 + image['anchor'][1])
 
     def __sortImageList(self):
-        self.__imagelist.sort(imageCmp)
+        self.__imagelist.sort(key = lambda x : (x['size'], x['name']))
 
     def __trySolution(self, width, height):
         imageNum = len(self.__imagelist)
@@ -323,7 +315,7 @@ class TexPac:
         fileName = os.path.join(filePath, self.__outName)
         for image in self.__imagelist:
             outImage.paste(image['im'], image['pos'])
-        print fileName
+        print(fileName)
         outImage.save(fileName + '.png')
 
         imageNum = len(self.__imagelist)
@@ -331,7 +323,7 @@ class TexPac:
         outFile.write('%d %d\n' % self.__outSize)
         outFile.write('%d\n' % imageNum)
         outInfo = []
-        self.__imagelist.sort(nameCmp)
+        self.__imagelist.sort(key = lambda x : ("%03d" % len(x['name'])) + x['name'])
         for image in self.__imagelist:
             name = image['name']
             size = image['size']
@@ -350,6 +342,7 @@ class TexPac:
         self.__outInfo = None
         self.__reservedPath = None
 
+
 def packAll(path):
     packer = TexPac()
     packer.setOutputFolder('output')
@@ -366,6 +359,7 @@ def packAll(path):
         f.close()
     packer.packPathsInPath(path)
 
+
 def main():
     argn = len(sys.argv)
 
@@ -379,7 +373,7 @@ def main():
     elif os.path.isfile(sys.argv[1]):
         packType = 'psdfile'
     else:
-        print('error: ' + sys.argv[1] + ' is neigher a folder or a psd file!')
+        print('error: ' + sys.argv[1] + ' is neither a folder nor a psd file!')
         return
 
     path = os.path.abspath(sys.argv[1])
@@ -402,6 +396,7 @@ def main():
         packer.packPath(path)
     elif packType == 'psdfile':
         packer.packPsd(path)
+
 
 if __name__ == '__main__':
     main()
